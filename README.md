@@ -293,21 +293,20 @@ The Groq baseline performed well on `help_request` and `deal_or_policy_info`, bu
 
 ## Fine-Tuned Model Per-Class Metrics
 
-Replace this table with the exact values from Section 4 of the notebook.
+| Label | Precision | Recall | F1-score | Support |
+|---|---:|---:|---:|---:|
+| `help_request` | 0.76 | 0.76 | 0.76 | 17 |
+| `customer_complaint` | 0.00 | 0.00 | 0.00 | 2 |
+| `employee_complaint` | 0.00 | 0.00 | 0.00 | 2 |
+| `deal_or_policy_info` | 0.67 | 0.86 | 0.75 | 14 |
+| **Accuracy** |  |  | **0.714** | 35 |
+| **Macro avg** | 0.36 | 0.41 | 0.38 | 35 |
+| **Weighted avg** | 0.64 | 0.71 | 0.67 | 35 |
 
-| Label                 | Precision | Recall |  F1-score | Support |
-| --------------------- | --------: | -----: | --------: | ------: |
-| `help_request`        |      TODO |   TODO |      TODO |      17 |
-| `customer_complaint`  |      TODO |   TODO |      TODO |       2 |
-| `employee_complaint`  |      TODO |   TODO |      TODO |       2 |
-| `deal_or_policy_info` |      TODO |   TODO |      TODO |      14 |
-| **Accuracy**          |           |        | **0.714** |      35 |
-| **Macro avg**         |      TODO |   TODO |      TODO |      35 |
 | **Weighted avg**      |      TODO |   TODO |      TODO |      35 |
+The fine-tuned DistilBERT model performed best on `help_request` and `deal_or_policy_info`, which were also the two largest classes in the dataset. It completely missed `customer_complaint` and `employee_complaint` on the test set, with 0.00 precision, recall, and F1-score for both labels.
 
-The fine-tuned model got 25 out of 35 test examples correct and 10 wrong.
-
----
+This suggests that the fine-tuned model learned the majority-class patterns better than the minority classes. Since there were only 2 `customer_complaint` and 2 `employee_complaint` examples in the test set, the model had very little opportunity to show reliable performance on those categories. The model likely over-predicted the larger labels instead of learning the smaller label boundaries well.
 
 ## Confusion Matrix
 
@@ -323,12 +322,15 @@ Replace the TODO values below with the exact values from the confusion matrix im
 
 | True Label ↓ / Predicted Label → | `help_request` | `customer_complaint` | `employee_complaint` | `deal_or_policy_info` |
 | -------------------------------- | -------------: | -------------------: | -------------------: | --------------------: |
-| `help_request`                   |           TODO |                 TODO |                 TODO |                  TODO |
-| `customer_complaint`             |           TODO |                 TODO |                 TODO |                  TODO |
-| `employee_complaint`             |           TODO |                 TODO |                 TODO |                  TODO |
-| `deal_or_policy_info`            |           TODO |                 TODO |                 TODO |                  TODO |
+| `help_request`                   |             13 |                    0 |                    0 |                      4|
+| `customer_complaint`             |              1 |                    0 |                    0 |                      1|
+| `employee_complaint`             |              1 |                    0 |                    0 |                      1|
+| `deal_or_policy_info`            |              2 |                    0 |                    0 |                     12|
 
-From the wrong predictions printed by the notebook, the most common pattern was confusion between `help_request` and `deal_or_policy_info`. This makes sense because many T-Mobile posts include both question wording and policy/promotion terms.
+The confusion matrix shows that the fine-tuned model mostly predicted only two labels: help_request and deal_or_policy_info. It correctly classified 13 out of 17 help_request examples and 12 out of 14 deal_or_policy_info examples. However, it did not correctly classify any customer_complaint or employee_complaint examples.
+This explains why customer_complaint and employee_complaint had 0.00 precision, recall, and F1-score. The model never predicted those two labels on the test set. This likely happened because the dataset was imbalanced: customer_complaint and employee_complaint had far fewer examples than the majority labels.
+The main failure pattern was that the model collapsed the smaller labels into the larger labels. Customer complaints and employee complaints were predicted as either help_request or deal_or_policy_info. This suggests the model learned surface-level signals from the larger classes, such as question wording or policy-related terms, but did not learn enough examples of complaint language to separate those categories reliably.
+
 
 ---
 
@@ -430,16 +432,17 @@ This shows that the model learned some useful patterns, but it did not always ca
 
 ## Sample Classifications
 
-Replace or expand these with 3-5 examples from your notebook output.
+The table below shows examples from the fine-tuned DistilBERT model output. Some examples were correct, while others show the model's main failure pattern: confusing smaller classes with the larger `help_request` and `deal_or_policy_info` labels.
 
-| Text Excerpt                                                                      | Predicted Label       | Confidence | Correct? | Notes                                                                               |
-| --------------------------------------------------------------------------------- | --------------------- | ---------: | -------- | ----------------------------------------------------------------------------------- |
-| A user asks why their bill changed after switching plans.                         | `help_request`        |       TODO | Yes      | This prediction is reasonable because the main purpose is asking for clarification. |
-| A user explains that a trade-in promo depends on bill credits and eligibility.    | `deal_or_policy_info` |       TODO | Yes      | This prediction is reasonable because the post is mainly informational.             |
-| A user complains that support keeps transferring them and nobody fixes the issue. | `customer_complaint`  |       TODO | TODO     | This depends on whether the post asks for help or mainly vents.                     |
-| A worker describes pressure from management to hit sales goals.                   | `employee_complaint`  |       TODO | TODO     | This should be employee-focused because it is from a workplace perspective.         |
+| Text Excerpt | Predicted Label | Confidence | Correct? | Notes |
+|---|---|---:|---|---|
+| A post asking for help with a T-Mobile issue was classified as `help_request`. | `help_request` | N/A | Yes | This prediction is reasonable because the main purpose of the text was asking for advice or troubleshooting. |
+| A post explaining a T-Mobile promotion, bill credit, or eligibility rule was classified as `deal_or_policy_info`. | `deal_or_policy_info` | N/A | Yes | This prediction is reasonable because the post was mainly informational rather than emotional or workplace-focused. |
+| "It is pretty embarrassing. The company..." | `help_request` | 0.31 | No | The true label was `customer_complaint`. The model treated a complaint about the company as if the user was asking for help. |
+| "The pros: schedule flexibility..." | `help_request` | 0.31 | No | The true label was `employee_complaint`. The model missed the employee/workplace perspective and predicted the larger `help_request` class. |
+| "Yea your most likely looking at Optic..." | `help_request` | 0.31 | No | The true label was `deal_or_policy_info`. The model saw explanatory language but classified it as a help request, showing confusion between advice and policy information. |
 
----
+Because the notebook's wrong-prediction output printed confidence values for incorrect examples, those confidence values are included where available. For the correct examples, I summarized representative correct predictions from the model behavior rather than quoting full Reddit text. The important pattern is that the model performed better on the majority labels and struggled with the smaller complaint-based labels.
 
 ## Reflection: What the Model Learned vs. What I Intended
 
@@ -531,7 +534,6 @@ LABEL_MAP = {
     "deal_or_policy_info": 3,
 }
 ```
-apify
 
 5. Run Sections 1 and 2 to load and split the dataset.
 6. Run Section 5 to collect the Groq baseline.
