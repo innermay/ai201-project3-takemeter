@@ -335,7 +335,23 @@ The main failure pattern was that the model collapsed the smaller labels into th
 
 ## Error Analysis
 
-The fine-tuned model made 10 wrong predictions out of 35 test examples.
+### AI-Assisted Failure Pattern Review
+
+Before writing my final error analysis, I used an AI tool to review the wrong predictions, confusion matrix, and model metrics. I used the AI response as a pattern-finding tool, then verified the claims myself against the confusion matrix and per-class metrics.
+
+The clearest pattern is that the fine-tuned model over-predicted the two majority labels: `help_request` and `deal_or_policy_info`. The model never predicted `customer_complaint` or `employee_complaint` on the test set, even when those were the true labels. Instead, the true `customer_complaint` examples were predicted as either `help_request` or `deal_or_policy_info`, and the true `employee_complaint` examples were also predicted as either `help_request` or `deal_or_policy_info`.
+
+This is a majority-class collapse. The model learned to separate the problem mostly into two larger categories: help/discussion posts and informational/policy posts. It did not learn the smaller complaint-based categories well enough.
+
+The dataset imbalance is the most likely reason. In the final dataset, `customer_complaint` and `employee_complaint` had far fewer examples than `help_request` and `deal_or_policy_info`. This imbalance carried into the test set, where there were only 2 examples each for `customer_complaint` and `employee_complaint`. Because the model saw fewer examples of those labels during training, it did not learn reliable patterns for them.
+
+The second major failure pattern was confusion between `help_request` and `deal_or_policy_info`. Four true `help_request` examples were predicted as `deal_or_policy_info`, and two true `deal_or_policy_info` examples were predicted as `help_request`. This boundary is difficult because many T-Mobile posts contain both question wording and policy or promotion terms. For example, a user may ask a question about bill credits, trade-ins, plan pricing, or eligibility. Depending on the main purpose of the post, it could be either a help request or a policy information post.
+
+The model seems to have learned surface patterns such as question words, plan names, promo terms, and bill-credit language. What I intended it to learn was the writer's main purpose: asking for help, complaining as a customer, complaining as an employee, or explaining information. The model partially learned this for the two majority labels, but it did not learn speaker perspective well enough to separate customer complaints from employee complaints.
+
+The strongest evidence is the gap between macro F1 and weighted F1. The fine-tuned model had a weighted F1 of 0.67, but a macro F1 of only 0.38. This means the model looked better when the larger classes had more influence, but performed poorly when every label was treated equally.
+
+My honest conclusion is that this model is not ready as a four-label classifier. It works better as a rough two-label classifier for `help_request` and `deal_or_policy_info`, but it fails on `customer_complaint` and `employee_complaint`. To improve it, I would collect a more balanced dataset with at least 80-100 examples per label, especially more complaint examples. I would also consider class-weighted training so the model is penalized more when it ignores smaller classes.
 
 ### Wrong Prediction 1
 
