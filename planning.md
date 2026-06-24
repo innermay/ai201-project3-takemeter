@@ -149,30 +149,34 @@ Decision for this example:
 
 ## Data Collection Plan
 
-I will collect at least 200 public posts or comments from T-Mobile-related Reddit discussions, mainly from r/tmobile and similar public Reddit threads. I will only use public content and will avoid anything private, internal, or personally identifying. I will not include account numbers, phone numbers, customer names, employee names, screenshots with private information, or anything from work systems.
+## Data Collection Plan
 
-The dataset will be saved as one CSV file:
+I will collect public T-Mobile-related Reddit posts and comments from r/tmobile and related public T-Mobile discussion search results. My original plan was to use Reddit API access through PRAW, but Reddit API self-service access was not available during my project timeline. Because of that, I used an Reddit scraper to collect public Reddit data.
 
-```csv
+The raw export will be saved as:
+
+data/raw_reddit.csv
+
+The final labeled dataset will be saved as:
+
+data/takemeter_dataset.csv
+
+The final dataset will have exactly these columns:
+
 text,label,notes
-```
 
-Required columns:
+I will only keep public post/comment text needed for classification. I will remove or avoid usernames, profile links, account numbers, phone numbers, screenshots with private information, and anything from internal T-Mobile systems.
 
-* `text`: the post or comment text
-* `label`: one of `help_request`, `customer_complaint`, `employee_complaint`, or `deal_or_policy_info`
-* `notes`: optional notes for hard cases or labeling decisions
+My target is at least 200 labeled examples across these four labels:
 
-Target distribution:
+- help_request
+- customer_complaint
+- employee_complaint
+- deal_or_policy_info
 
-* `help_request`: about 50 examples
-* `customer_complaint`: about 50 examples
-* `employee_complaint`: about 50 examples
-* `deal_or_policy_info`: about 50 examples
+If one label is underrepresented after scraping, I will search for more examples using targeted search terms. For example, I will search terms like "bill question" and "upgrade question" for help requests, "bad coverage" and "support issue" for customer complaints, "commission" and "sales goals" for employee complaints, and "trade in promo" and "bill credits" for deal or policy information.
 
-The goal is a balanced dataset of around 200 total examples. No single label should be more than 70% of the dataset. If one label is underrepresented after collecting 200 examples, I will collect more examples for that label before training. I expect `employee_complaint` may be harder to collect than customer posts, so I will intentionally search for posts/comments from employees or retail workers to keep that label represented.
-
-Before labeling all 200 examples, I will read around 30-40 posts to check whether the labels apply cleanly to real data. If many posts do not fit any label, I will revise the label definitions before continuing.
+I will use a preparation script to clean the raw CSV, remove deleted/removed posts, remove very short examples, remove duplicates, and create the final CSV. I may use rule-based or AI-assisted pre-labeling to speed up annotation, but I will review the labels before using the dataset for training.
 
 ## Annotation Process
 
@@ -185,12 +189,18 @@ I will label each example manually using the definitions in this planning docume
 
 If a post could fit more than one label, I will use the edge-case decision rules above. I will write notes for difficult examples, especially examples that sit between two labels. I will include at least three difficult-to-label examples and my decisions in the README.
 
+Because I used a scraper, I expect some rows to be noisy, duplicated, too short, deleted, or unclear. I will skip rows that do not contain enough context to label confidently.
+
+I used a rule-based preparation script as a first labeling pass. The script looked for signals such as question wording for `help_request`, frustration/customer-service language for `customer_complaint`, workplace terms like quota, commission, manager, and store for `employee_complaint`, and promotion/policy terms like bill credit, trade-in, plan, and eligibility for `deal_or_policy_info`.
+
+I will treat these labels as pre-labels, not final unquestioned truth. I will review the dataset for obvious mistakes and document difficult examples in the README.
+
 I may use an AI tool to suggest preliminary labels for small batches, but I will personally review and correct every label before including it in the dataset. If I use AI for pre-labeling, I will disclose that in the README AI usage section.
 
 ## Model and Training Plan
 
 The fine-tuned model will use `distilbert-base-uncased` in the provided TakeMeter Colab notebook. The notebook will split the dataset into train, validation, and test sets using a 70% / 15% / 15% split.
-
+ 
 Initial hyperparameters:
 
 * Base model: `distilbert-base-uncased`
@@ -253,11 +263,21 @@ There may be many more customer complaints than employee complaints or policy po
 
 Some Reddit comments may be very short, such as “same thing happened to me” or “this company is terrible.” These may not give enough context for a reliable label. If a post does not contain enough information to assign one of the four labels confidently, I will skip it instead of forcing a bad label.
 
+### Challenge 5: dataset imbalance after scraping
+
+Even though I planned for a balanced dataset, scraping public Reddit data may produce more help requests and deal/policy posts than customer or employee complaints. This can cause the fine-tuned model to perform better on majority classes and worse on underrepresented labels. I will report the final label distribution and discuss any imbalance in my README and error analysis.
+
 ## AI Tool Plan
 
 ### Label stress-testing
 
-I will use ChatGPT or Claude to stress-test my label definitions before labeling all 200 examples. I will provide the four label definitions and the edge-case rules from this planning document, then ask the AI to generate 5-10 borderline T-Mobile-style posts that could fit two labels. I will try to label those examples myself. If I cannot label them consistently, I will revise the definitions or decision rules before continuing.
+### Annotation assistance
+
+I used Claude to help create a dataset preparation script named `prepare_dataset.py`. I gave Claude my label definitions, decision rules, and raw CSV structure. The script reads the raw CSV, combines title/body fields into one text field, cleans scraper artifacts, removes deleted or very short rows, removes duplicates, applies first-pass rule-based labels, and writes `data/takemeter_dataset.csv`.
+
+I reviewed and changed the script before using it. One important change was fixing the input file path so it worked in my local VS Code project instead of Claude's environment. I also checked that the output CSV had exactly the required columns: `text`, `label`, and `notes`.
+
+I will disclose this AI-assisted annotation workflow in my README because the project allows LLM or AI pre-labeling only if I review and correct the labels myself.
 
 What I will verify:
 
