@@ -303,7 +303,6 @@ The Groq baseline performed well on `help_request` and `deal_or_policy_info`, bu
 | **Macro avg** | 0.36 | 0.41 | 0.38 | 35 |
 | **Weighted avg** | 0.64 | 0.71 | 0.67 | 35 |
 
-| **Weighted avg**      |      TODO |   TODO |      TODO |      35 |
 The fine-tuned DistilBERT model performed best on `help_request` and `deal_or_policy_info`, which were also the two largest classes in the dataset. It completely missed `customer_complaint` and `employee_complaint` on the test set, with 0.00 precision, recall, and F1-score for both labels.
 
 This suggests that the fine-tuned model learned the majority-class patterns better than the minority classes. Since there were only 2 `customer_complaint` and 2 `employee_complaint` examples in the test set, the model had very little opportunity to show reliable performance on those categories. The model likely over-predicted the larger labels instead of learning the smaller label boundaries well.
